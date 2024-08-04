@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Messages</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<style>
+        #progress {
+            background-color: green;
+            height: 30px;
+            width: 100%; /* Начальная ширина */
+            transition: width 0.5s; /* Плавный переход */
+        }
+</style>
+<body>
+    <h1>Messages</h1>
+    <div id="progress-bar">
+        <div id="status"></div>
+        <div id="progress"></div>
+    </div>
+    <table id="messages-table">
+        <tr>
+            <th>ID</th>
+            <th>Subject</th>
+            <th>Sent Date</th>
+            <th>Received Date</th>
+            <th>Body</th>
+            <th>Attachments</th>
+        </tr>
+
+    </table>
+
+    <script>
+        var socket = new WebSocket('ws://' + window.location.host + '/ws/mail/');
+        socket.onmessage = function(event) {
+            var data = JSON.parse(event.data);
+            if (data.status === 'fetching') {
+             $('#status').html('<strong>Fetching</strong>');
+                $('#progress').css('width', data.progress + '%');
+            }
+            else if (data.status === 'completed') {
+                $('#status').html('<strong>Filling</strong>');
+                var socket2 = new WebSocket('ws://'+window.location.host + '/ws/get-mail/');
+                socket2.onmessage = function(event)
+                {
+                 var data = JSON.parse(event.data);
+                 if(data.status ==="fetching"){
+                    var newRow = `
+                        <tr>
+                            <td>${data.id}</td>
+                            <td>${data.subject}</td>
+                            <td>${data.sent_date}</td>
+                            <td>${data.received_date}</td>
+                            <td>${data.body}</td>
+                            <td>${data.attachments}</td>
+                        </tr>
+                    `;
+                    $('#progress').css('width', data.progress + '%');
+                    $('#messages-table').append(newRow);
+                    }
+                   else if (data.status === "complete")
+                   {
+                   $('#status').html('<strong>Completed</strong>');
+                   }
+                };
+                socket2.onopen = function()
+                {
+                socket2.send(JSON.stringify({'null':1}));
+                };
+            }
+        };
+        socket.onopen = function() {
+            socket.send(JSON.stringify({'email': 'fasadar.2'}));
+        };
+    </script>
+</body>
+</html>
